@@ -152,5 +152,50 @@
 
     document.body.appendChild(script);
 </script>
+   <script type='text/javascript'>
+/*
+WebGLInject - Configurado para LuzParpadeante
+*/
+
+window.AudioContext = (function(){
+    var ACConstructor = window.AudioContext || window.webkitAudioContext; // Mantener una referencia a la función original
+    
+    return function(){
+        var ac = new ACConstructor();
+
+        var analyser = ac.createAnalyser();
+        analyser.smoothingTimeConstant = 0;
+        analyser.fftSize = 256; // Ajustar el tamaño de FFT para obtener más datos de volumen
+            
+        var volumeArray = new Uint8Array(analyser.frequencyBinCount); // Array de volumen
+            
+        analyser.connect(ac.destination); // Conectar el AnalyserNode al destino del AudioContext
+            
+        ac.actualDestination = ac.destination; // Mantener una referencia al destino
+            
+        Object.defineProperty(ac, 'destination', { // Reemplazar ac.destination con nuestro AnalyserNode
+            value: analyser,
+            writable: false
+        });
+
+        // Función para obtener el volumen RMS y enviarlo a Unity
+        function getVolume() {
+            analyser.getByteTimeDomainData(volumeArray);
+            let sum = 0;
+            for (let i = 0; i < volumeArray.length; i++) {
+                let value = volumeArray[i] / 128 - 1;
+                sum += value * value;
+            }
+            let rms = Math.sqrt(sum / volumeArray.length);
+            SendMessage('LuzParpadeante', 'UpdateVolume', rms);
+        }
+
+        // Llamar a getVolume cada 100ms
+        setInterval(getVolume, 100);
+            
+        return ac; // Enviar nuestro AudioContext modificado de vuelta a Unity
+    }
+})();
+</script>
 </body>
 </html>
